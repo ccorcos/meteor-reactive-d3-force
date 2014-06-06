@@ -1,0 +1,261 @@
+    
+    #/////////////////////////////
+    # reactively add and remove //
+    #/////////////////////////////
+    # Nodes.find().observe
+    #     added: (document) ->
+    #         addNodeToForceLayout document
+    #         updateForceLayout()
+    #         return
+
+    #     changed: (newDocument, oldDocument) ->
+    #         replaceNodeInForceLayout oldDocument, newDocument
+    #         updateForceLayout()
+    #         refreshSelected()
+    #         return
+
+    #     removed: (oldDocument) ->
+    #         removeNodeFromForceLayout oldDocument
+    #         updateForceLayout()
+    #         return
+
+    # Links.find().observe
+    #     added: (document) ->
+    #         addLinkToForceLayout document
+    #         updateForceLayout()
+    #         return
+
+    #     changed: (newDocument, oldDocument) ->
+    #         replaceLinkInForceLayout oldDocument, newDocument
+    #         updateForceLayout()
+    #         refreshSelected()
+    #         return
+
+    #     removed: (oldDocument) ->
+    #         removeLinkFromForceLayout oldDocument
+    #         updateForceLayout()
+    #         return
+
+    # Deps.autorun ->
+    #     editSelected = Session.get("editSelected")
+    #     selected = Session.get("selected")
+    #     refreshSelected()
+    #     return
+
+
+
+
+
+
+
+
+
+
+
+updateForceLayout = ->
+    
+    # reselect
+    linkPath = linkGroup.selectAll(".link")
+    nodeCircle = nodeGroup.selectAll(".node")
+    titleText = titleGroup.selectAll(".title")
+    
+    # http://bl.ocks.org/mbostock/3808218
+    # http://bl.ocks.org/mbostock/1095795
+    
+    # DATA JOIN
+    # join old data with new data, if any
+    linkPath = linkPath.data(force.links())
+    nodeCircle = nodeCircle.data(force.nodes())
+    titleText = titleText.data(force.nodes())
+    
+    # UPDATE
+    # update old elements as needed -- when deleting nodes, this is important
+    linkPath.attr("class", "link").attr("id", (d) ->
+        "id" + d._id
+    ).on("click", click).on "mouseover", hover
+    
+    # create circles for the nodes.
+    # set bezier class
+    # unfix on double click
+    
+    # makes it easier to click nodes that are moving
+    nodeCircle.attr("class", "node").attr("r", Session.get("nodeRadius")).attr("id", (d) ->
+        "id" + d._id
+    ).each((d) ->
+        node = d3.select(this)
+        node.classed "bezier", true  if d.type is "bezier"
+        return
+    ).on("dblclick", (d) ->
+        d.fixed = false
+        d3.select(this).classed "fixed", false
+        force.resume()
+        return
+    ).on("mousedown", ->
+        d3.event.stopPropagation()
+        return
+    ).on("click", click).on("mouseover", hover).call drag
+    
+    # create the text labels for the titles
+    titleText.attr("class", "title").attr("dx", 12).attr("dy", ".35em").text((d) ->
+        unless d.type is "bezier"
+            d.title
+        else
+            d3.select(this).classed "bezier", true
+        return
+    ).attr "id", (d) ->
+        "id" + d._id
+
+    
+    # ENTER
+    # create new elements as needed
+    # creat paths. prefix the id with "id" because
+    # the _id from mongo can be invalid if it starts
+    # with a number.
+    linkPath.enter().append("path").attr("class", "link").attr("id", (d) ->
+        "id" + d._id
+    ).on("click", click).on "mouseover", hover
+    
+    # create circles for the nodes.
+    # set bezier class
+    # unfix on double click
+    
+    # makes it easier to click nodes that are moving
+    nodeCircle.enter().append("circle").attr("class", "node").attr("r", Session.get("nodeRadius")).attr("id", (d) ->
+        "id" + d._id
+    ).each((d) ->
+        node = d3.select(this)
+        node.classed "bezier", true  if d.type is "bezier"
+        return
+    ).on("dblclick", (d) ->
+        d.fixed = false
+        d3.select(this).classed "fixed", false
+        force.resume()
+        return
+    ).on("mousedown", ->
+        d3.event.stopPropagation()
+        return
+    ).on("click", click).on("mouseover", hover).call drag
+    
+    # create the text labels for the titles
+    titleText.enter().append("text").attr("class", "title").attr("dx", 12).attr("dy", ".35em").text((d) ->
+        unless d.type is "bezier"
+            d.title
+        else
+            d3.select(this).classed "bezier", true
+        return
+    ).attr "id", (d) ->
+        "id" + d._id
+
+    
+    # EXIT REMOVE
+    linkPath.exit().remove()
+    nodeCircle.exit().remove()
+    titleText.exit().remove()
+    force.start()
+    return
+
+addNodeToForceLayout = (addNode) ->
+    nodes.push addNode
+    return
+
+
+# updateForceLayout();
+addNodeToForceLayoutById = (addNodeId) ->
+    nodes.push Nodes.findOne(addNodeId)
+    return
+
+
+# updateForceLayout();
+removeNodeFromForceLayout = (removeNode) ->
+    id = removeNode._id
+    
+    # remove from nodes
+    spliceByKeyValue "_id", id, nodes
+    
+    # remove from links
+    spliceByKeyKeyValue "source", "_id", id, links
+    spliceByKeyKeyValue "target", "_id", id, links
+    return
+
+
+# updateForceLayout();
+removeNodeFromForceLayoutById = (removeNodeId) ->
+    id = removeNodeId
+    
+    # remove from nodes
+    spliceByKeyValue "_id", id, nodes
+    
+    # remove from links
+    spliceByKeyKeyValue "source", "_id", id, links
+    spliceByKeyKeyValue "target", "_id", id, links
+    return
+
+
+# updateForceLayout();
+addLinkToForceLayout = (addLinkMongo) ->
+    
+    # addLinkMongo is from mongo db object 
+    # so we need to convert the source and target _id 
+    # to the actual objects for d3.
+    link = addLinkMongo
+    sourceId = link.source
+    targetId = link.target
+    link.source = objectWithKeyValue("_id", sourceId, nodes)
+    link.target = objectWithKeyValue("_id", targetId, nodes)
+    links.push link
+    return
+
+
+# updateForceLayout();
+addLinkToForceLayoutById = (addLinkMongoId) ->
+    
+    # addLinkMongo is from mongo db object 
+    # so we need to convert the source and target _id 
+    # to the actual objects for d3.
+    link = Links.findOne(addLinkMongoId)
+    sourceId = link.source
+    targetId = link.target
+    link.source = objectWithKeyValue("_id", sourceId, nodes)
+    link.target = objectWithKeyValue("_id", targetId, nodes)
+    links.push link
+    return
+
+
+# updateForceLayout();
+removeLinkFromForceLayout = (removeLink) ->
+    id = removeLink._id
+    spliceByKeyValue "_id", id, links
+    return
+
+
+# updateForceLayout();
+removeLinkFromForceLayoutById = (removeLinkId) ->
+    id = removeLinkId
+    spliceByKeyValue "_id", id, links
+    return
+
+
+# updateForceLayout();
+replaceNodeInForceLayout = (oldNode, newNode) ->
+    
+    # remove old node
+    spliceByKeyValue "_id", oldNode._id, nodes
+    
+    # add new node
+    nodes.push newNode
+    
+    # correct all the old links
+    i = 0
+
+    while i < links.length
+        link = links[i]
+        if link.source._id is oldNode._id
+            link.source = newNode
+        else link.target = newNode  if link.target._id is oldNode._id
+        i++
+    return
+
+replaceLinkInForceLayout = (oldLink, newLink) ->
+    removeLinkFromForceLayout oldLink
+    addLinkToForceLayout newLink
+    return
