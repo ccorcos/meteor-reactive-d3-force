@@ -1,0 +1,15 @@
+.label.on {
+    visibility: visible;
+}
+
+.label.off {
+    visibility: hidden;
+}
+
+.label.hover {
+    visibility: hidden;
+}
+
+.label.select.selected {
+    visibility: visible;
+}

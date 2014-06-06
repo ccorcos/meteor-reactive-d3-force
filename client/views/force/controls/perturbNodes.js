@@ -6,7 +6,7 @@ Template.perturbNodes.events({
 
 perturbNodes = function() {
     // http://bl.ocks.org/mbostock/1021841
-    nodes.forEach(function(d, i) {
+    force.nodes().forEach(function(d, i) {
         d.x += (Math.random() - 0.5) * 100;
         d.y += (Math.random() - 0.5) * 100;
     });

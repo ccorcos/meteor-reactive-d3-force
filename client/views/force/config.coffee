@@ -13,5 +13,8 @@ Session.setDefault "gravity", 0.1
 Session.setDefault "stick", true
 Session.setDefault "hover", true
 Session.setDefault "fontSize", 10
-Session.setDefault "nodeRadius", 9
-Session.setDefault "linkSize", 5
+Session.setDefault "nodeRadius", 7
+Session.setDefault "linkSize", 1
+
+
+Session.setDefault "labelControl", "on" # "off", "select"

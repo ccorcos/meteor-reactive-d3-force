@@ -10,7 +10,7 @@ Template.fontSize.rendered = function() {
     // autorun font size
     Deps.autorun(function() {
         var fontSize = Session.get("fontSize");
-        // change the font size of the title elements
-        $.rule('.title').append('font-size:' + fontSize + 'px;');
+        // change the font size of the label elements
+        $.rule('.label').append('font-size:' + fontSize + 'px;');
     })
 }

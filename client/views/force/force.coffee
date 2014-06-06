@@ -10,8 +10,8 @@ nodeGroup = undefined
 labelGroup = undefined
 
 drag = undefined
-width = 800
-height = 800
+width = 400
+height = 400
 
 # global scope for controls to access
 force = undefined
@@ -55,12 +55,12 @@ unselect = ->
     selected = Session.get "selected"
     # unclass the selected element
     if selected
-        d3.select("#id" + selected._id)
+        d3.selectAll("#id" + selected._id)
             .classed("selected", false)
     Session.set "selected", null
 
 select = (nodeOrLink) ->
-    d3.select("#id" + nodeOrLink._id)
+    d3.selectAll("#id" + nodeOrLink._id)
         .classed("selected", true)
     Session.set "selected", nodeOrLink
 
@@ -87,7 +87,7 @@ dataJoinNodes = ->
         .data(force.nodes())
 
 dataJoinLabels = ->
-    labelText = labelGroup.selectAll(".title")
+    labelText = labelGroup.selectAll(".label")
         .data(force.nodes())
 
 dataJoinLinks = ->
@@ -127,7 +127,7 @@ enterLabels = ->
     # set the _id for selecting.
     labelText.enter()
         .append("text")
-        .attr("class", "label")
+        .attr("class", "label " + Session.get("labelControl"))
         .attr("dx", 12)
         .attr("dy", ".35em")
         .attr("id", (data) -> "id" + data._id)
@@ -148,7 +148,7 @@ enterLinks = ->
 
 updateLabels = ->
     # set the text of the label
-    labelText.text((data) -> data.title)
+    labelText.text((data) -> data.name)
 
 exitRemoveNodes = ->
     nodeCircle.exit().remove();
@@ -189,7 +189,10 @@ Template.force.rendered = ->
         .gravity(Session.get("gravity"))
         .size([width, height])
         .nodes(nodes)
-        .links(links)  
+        .links(links)
+
+    # update the global scope
+    window.force = force
 
     # create the drag function
     drag = force.drag()

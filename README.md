@@ -3,6 +3,9 @@
 
 # To Do
 
+labels on-off-hover
+beizer
+
 controls
 filters
 colors

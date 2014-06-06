@@ -10,6 +10,6 @@ Template.linkSize.rendered = function() {
     // autorun
     Deps.autorun(function() {
         var linkSize = Session.get("linkSize");
-        $.rule('.link').append('stroke-width:' + linkSize + 'px;');
+        $.rule('.links').append('stroke-width:' + linkSize + 'px;');
     })
 }
