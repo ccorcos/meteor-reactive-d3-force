@@ -1,4 +1,4 @@
-# Session.setDefault("bezier", true);
+Session.setDefault "bezier", false
 
 # force layout params
 Session.setDefault "linkDistance", 1 
@@ -15,7 +15,6 @@ Session.setDefault "hover", true
 Session.setDefault "fontSize", 10
 Session.setDefault "nodeRadius", 7
 Session.setDefault "linkSize", 1
-
 Session.setDefault "labelControl", "on" # "off", "select"
 
 @printConfigs = ->

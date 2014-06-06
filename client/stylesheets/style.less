@@ -42,11 +42,19 @@ body {
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
-    visibility: hidden;
+    pointer-events:none;
 }
 
-.selected {
+.node.selected {
     fill: green;
     stroke: green;
 }
 
+.bezier {
+    // fill: yellow;
+    visibility: hidden;
+}
+
+.label.bezier.on {
+    visibility: hidden;
+}

@@ -10,8 +10,8 @@ nodeGroup = undefined
 labelGroup = undefined
 
 drag = undefined
-width = 400
-height = 400
+width = 650
+height = 650
 
 # global scope for controls to access
 force = undefined
@@ -38,8 +38,12 @@ svgBounds = ->
         return [xMin, xMax, yMin, yMax]
 
 tick = ->
+    # bezier
     # update link path 
-    linkPath.attr("d", (data) -> "M" + data.source.x + "," + data.source.y + "L" + data.target.x + "," + data.target.y)
+    if Session.get "bezier"
+        linkPath.attr "d", (data) -> "M" + data[0].x + "," + data[0].y + "S" + data[1].x + "," + data[1].y + " " + data[2].x + "," + data[2].y;
+    else
+        linkPath.attr("d", (data) -> "M" + data.source.x + "," + data.source.y + "L" + data.target.x + "," + data.target.y)
 
     # update nodes with bounded a window
     [xMin, xMax, yMin, yMax] = svgBounds()
@@ -80,23 +84,27 @@ unstick = (node) ->
     force.resume()
 
 
-dataJoinNodes = ->
+@dataJoinNodes = ->
     # create a selection
     # data join
     nodeCircle = nodeGroup.selectAll(".node")
         .data(force.nodes())
 
-dataJoinLabels = ->
+@dataJoinLabels = ->
     labelText = labelGroup.selectAll(".label")
         .data(force.nodes())
 
-dataJoinLinks = ->
+@dataJoinLinks = ->
     # create a selection
     # data dataJoinLinks
-    linkPath = linkGroup.selectAll(".link")
-        .data(force.links())
+    if Session.get "bezier"
+        linkPath = linkGroup.selectAll(".link")
+                .data(force.bilinks)
+    else
+        linkPath = linkGroup.selectAll(".link")
+            .data(force.links())
 
-enterNodes = ->
+@enterNodes = ->
     # enter all of the new nodes
     # create an svg circle element
     # class it as a node for CSS
@@ -116,9 +124,10 @@ enterNodes = ->
         .on("mousedown", -> d3.event.stopPropagation())
         .on("click", click)
         .on("mouseover", hover)
+        .each((data) -> if data.name is "bezier" then d3.select(this).classed("bezier", true))
         .call(drag)
 
-enterLabels = ->
+@enterLabels = ->
     # enter all of the new elements
     # create an svg text element
     # class it as a label for CSS
@@ -131,8 +140,10 @@ enterLabels = ->
         .attr("dx", 12)
         .attr("dy", ".35em")
         .attr("id", (data) -> "id" + data._id)
+        .each((data) -> if data.name is "bezier" then d3.select(this).classed("bezier", true))
 
-enterLinks = ->
+
+@enterLinks = ->
     # enter all of the new elements
     # create an svg path element
     # class it as a link for CSS
@@ -145,19 +156,158 @@ enterLinks = ->
         .attr("id", (data) -> "id" + data._id)
         .on("click", click)
         .on("mouseover", hover)
+    return
 
-updateLabels = ->
+@updateLabels = ->
     # set the text of the label
     labelText.text((data) -> data.name)
+    return
 
-exitRemoveNodes = ->
-    nodeCircle.exit().remove();
+@exitRemoveNodes = ->
+    nodeCircle.exit().remove()
+    return
 
-exitRemoveLabels = ->
-    labelText.exit().remove();
+@exitRemoveLabels = ->
+    labelText.exit().remove()
+    return
 
-exitRemoveLinks = ->
-    linkPath.exit().remove();
+@exitRemoveLinks = ->
+    linkPath.exit().remove()
+    return
+
+forceAddNode = (node) -> 
+    force.nodes().push node
+    return
+
+forceUpdateNode = (newNode, oldNode) ->
+    # # remove old node
+    # nodes = _.filter(force.nodes(), (node) -> node._id isnt oldNode._id)
+    # # add new node
+    # nodes.push newNode
+    # # update the force nodes
+    # force.nodes(nodes)
+    # # the force graph keeps track of nodes and links through the object references
+    # # so we need to update the source and target references of the links as well
+    # _.each force.links(), (link) ->
+    #     link.source = newNode if link.source._id is oldNode._id
+    #     link.target = newNode if link.source._id is oldNode._id
+    
+    node = _.findWhere force.nodes(), {_id:oldNode._id}
+    _.extend node, newNode
+    return  
+
+# getbezierNeighbors = (node) ->
+    # sourceLinks = _.filter force.links(), (link)-> link.source._id is oldNode._id
+    # targetLinks = _.filter force.links(), (link)-> link.target._id is oldNode._id
+    # neighbors = _.union _.pluck(sourceLinks, "target"), _.pluck(targetLinks, "source")
+    # bezierNeighbors = _.where neighbors, {name:'bezier'}
+
+forceRemoveNode = (oldNode) ->
+    if Session.get "bezier"
+        bilinks = force.bilinks
+        sourceLinks = _.filter force.links(), (link)-> link.source._id is oldNode._id
+        targetLinks = _.filter force.links(), (link)-> link.target._id is oldNode._id
+        bezierLinks = _.filter _.union sourceLinks, targetLinks
+        # update the bilinks
+        sourceBilinks = _.filter bilinks, (link)-> link[0]._id is oldNode._id
+        targetBilinks = _.filter bilinks, (link)-> link[2]._id is oldNode._id
+        removeBilinks = _.union sourceBilinks, targetLinks
+
+        bezierNodes = _.map removeBilinks, (bilink) -> bilink[1]
+        removeNodes = _.union bezierNodes, [_.where force.nodes(), _id: oldNode._id]
+
+        # remove links pointing to this node
+        links = _.filter(force.links(), (link) -> !_.contains bezierLinks, link)
+        bilinks = _.filter(bilinks, (bilink) -> !_.contains removeBilinks, bilink)
+        nodes = _.filter(force.nodes(), (node) -> !_.contains removeNodes, node)
+        
+        # update the force nodes
+        force.nodes(nodes)
+        # update the force links
+        force.links(links)
+        return
+    else
+        # remove old node
+        nodes = _.filter(force.nodes(), (node) -> node._id isnt oldNode._id)
+        
+        # remove links pointing to this node
+        links = _.filter(force.links(), (link) -> link.source._id isnt oldNode._id and link.target._id isnt oldNode._id)
+        
+        # update the force nodes
+        force.nodes(nodes)
+        # update the force links
+        force.links(links)
+        return
+
+forceAddLink = (link) ->
+    if Session.get "bezier"
+        bilinks = force.bilinks
+        bezier = _.extend link, {name:"bezier"}
+        link1 = 
+            source: _.findWhere(force.nodes(), {_id: link.source})
+            target: bezier
+        link2 = 
+            source: bezier
+            target: _.findWhere(force.nodes(), {_id: link.target})
+        
+        bilink = [link1.source, bezier, link2.target]
+        bilinks.push bilink
+        # add the bezier intermediate
+        force.nodes().push bezier
+        # add the bezier links
+        force.links().push link1
+        force.links().push link2
+    else
+        # we need to convert the source and target _id 
+        # to the actual object references for d3.
+        link.source = _.findWhere(force.nodes(), {_id: link.source})
+        link.target = _.findWhere(force.nodes(), {_id: link.target})
+        force.links().push link
+        return
+
+forceUpdateLink = (newLink,oldLink) ->
+    if Session.get "bezier"
+        bezier = _.findWhere force.noded(), {_id:oldLink._id}
+        _.extend bezier, newLink
+        return
+    else
+        # # remove old link
+        # links = _.filter(force.links(), (link) -> link._id isnt oldLink._id)
+        # # add new link
+        # newLink.source = _.findWhere(force.nodes(), {_id: newLink.source})
+        # newLink.target = _.findWhere(force.nodes(), {_id: newLink.target})
+        # links.push newLink
+        # # update the force links
+        # force.links(links)
+        
+        link = _.findWhere force.links(), {_id:oldLink._id}
+        _.extend link, newLink
+        return
+
+forceRemoveLink = (oldLink) ->
+    if Session.get "bezier"
+        bilinks = force.bilinks
+        bezierNode = _.findWhere force.nodes(), {_id:oldLink._id}
+
+        removeBilinks = _.filter force.links(), (link)-> link[1] is bezierNode
+        bilinks = _.filter(bilinks, (bilink) -> !_.contains removeBilinks, bilink)
+
+        sourceLinks = _.filter force.links(), (link)-> link.source is bezierNode
+        targetLinks = _.filter force.links(), (link)-> link.target is bezierNode
+        bezierLinks = _.union sourceLinks, targetLinks
+        # remove nodes
+        nodes = _.filter(force.nodes(), (node) -> node isnt bezierNode)
+        # remove links pointing to this node
+        links = _.filter(force.links(), (link) -> !_.contains bezierLinks, link)
+        # update the force nodes
+        force.nodes(nodes)
+        # update the force links
+        force.links(links)
+    else
+        # remove old link
+        links = _.filter(force.links(), (link) -> link._id isnt oldLink._id)
+        force.links(links)
+        return
 
 Template.force.rendered = ->
     # handle scopes to keep the code cleaner
@@ -193,6 +343,7 @@ Template.force.rendered = ->
 
     # update the global scope
     window.force = force
+    force.bilinks = []
 
     # create the drag function
     drag = force.drag()
@@ -235,7 +386,7 @@ Template.force.rendered = ->
     Nodes.find().observe
         added: (node) ->
             # enter the new node and label in the force layout
-            force.nodes().push node
+            forceAddNode(node)
             # data join
             dataJoinNodes()
             dataJoinLabels()
@@ -249,18 +400,7 @@ Template.force.rendered = ->
 
         changed: (newNode, oldNode) ->
             # update the node in the force layout
-            # remove old node
-            nodes = _.filter(force.nodes(), (node) -> node._id isnt oldNode._id)
-            # add new node
-            nodes.push newNode
-            # update the force nodes
-            force.nodes(nodes)
-            # the force graph keeps track of nodes and links through the object references
-            # so we need to update the source and target references of the links as well
-            _.each force.links(), (link) ->
-                link.source = newNode if link.source._id is oldNode._id
-                link.target = newNode if link.source._id is oldNode._id            
-
+            forceUpdateNode(newNode, oldNode)
             # data join
             dataJoinNodes()
             dataJoinLabels()
@@ -277,16 +417,7 @@ Template.force.rendered = ->
 
         removed: (oldNode) ->
             # update the node in the force layout
-            # remove old node
-            nodes = _.filter(force.nodes(), (node) -> node._id isnt oldNode._id)
-            # update the force nodes
-            force.nodes(nodes)
-
-            # remove links pointing to this node
-            links = _.filter(force.links(), (link) -> link.source._id isnt oldNode._id and link.target._id isnt oldNode._id)
-            # update the force links
-            force.links(links)
-            
+            forceRemoveNode(oldNode)
             # data join
             dataJoinNodes()
             dataJoinLabels()
@@ -300,28 +431,31 @@ Template.force.rendered = ->
 
     Links.find().observe
         added: (link) ->
-            # we need to convert the source and target _id 
-            # to the actual object references for d3.
-            link.source = _.findWhere(force.nodes(), {_id: link.source})
-            link.target = _.findWhere(force.nodes(), {_id: link.target})
-            force.links().push link
-            # data join
-            dataJoinLinks()
-            # enter the data
-            enterLinks()
-            force.start()
-            return
+            forceAddLink(link)
+            if Session.get "bezier"
+                # data join
+                dataJoinNodes()
+                dataJoinLabels()
+                dataJoinLinks()
+                # enter the data
+                enterNodes()
+                enterLabels()
+                enterLinks()
+                # update the labels
+                updateLabels()
+                force.start()
+                return
+            else
+                # data join
+                dataJoinLinks()
+                # enter the data
+                enterLinks()
+                # enter the data
+                force.start()
+                return
 
         changed: (newLink, oldLink) ->
-            # remove old link
-            links = _.filter(force.links(), (link) -> link._id isnt oldLink._id)
-            # add new link
-            newLink.source = _.findWhere(force.nodes(), {_id: newLink.source})
-            newLink.target = _.findWhere(force.nodes(), {_id: newLink.target})
-            links.push newLink
-            # update the force links
-            force.links(links)
-
+            forceUpdateLink(newLink,oldLink)
             # data join
             dataJoinLinks()
             # enter
@@ -332,16 +466,30 @@ Template.force.rendered = ->
             return
 
         removed: (oldLink) ->
-            # remove old link
-            links = _.filter(force.links(), (link) -> link._id isnt oldLink._id)
-            force.links(links)
-            
-            # data join
-            dataJoinLinks()
-            # exit remove
-            exitRemoveLinks()
-            force.start()
-            return
+            forceRemoveLink(oldLink)
+            if Session.get "bezier"
+                # data join
+                dataJoinNodes()
+                dataJoinLabels()
+                dataJoinLinks()
+                # enter the data
+                enterNodes()
+                enterLabels()
+                enterLinks()
+                # update the labels
+                updateLabels()
+                # exit remove
+                exitRemoveLinks()
+                exitRemoveNodes()
+                exitRemoveLabels()
+                force.start()
+            else
+                # data join
+                dataJoinLinks()
+                # exit remove
+                exitRemoveLinks()
+                force.start()
+                return
 
 Template.force.destroyed = () ->
     force.stop()

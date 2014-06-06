@@ -10,6 +10,10 @@
     visibility: hidden;
 }
 
+.label.select {
+    visibility: hidden;
+}
+
 .label.select.selected {
     visibility: visible;
 }
