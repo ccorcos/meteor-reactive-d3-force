@@ -10,6 +10,8 @@ cluster
 data attributes for rank, etc.
 data -> graph controls such as link strenght, distance, etc.
 curvy / beizer
+facebook data
+users
 
 
 # API 
