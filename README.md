@@ -4,7 +4,7 @@
 # To Do
 
 facebook data
-
+static, clustering
 
 filters
 colors

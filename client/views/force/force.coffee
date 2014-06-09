@@ -10,12 +10,12 @@ nodeGroup = undefined
 labelGroup = undefined
 
 drag = undefined
-width = 650
-height = 650
+width = 1650
+height = 1650
 
 # global scope for controls to access
 force = undefined
-startForce = true
+startForce = false
 
 svgBounds = ->
     currentWidth = $("svg").width()
@@ -310,9 +310,7 @@ forceRemoveLink = (oldLink) ->
         return
 
 Template.force.rendered = ->
-    # handle scopes to keep the code cleaner
-    # console.log(Object.keys(this))
-    # console.log(window)
+    console.log "rendering force"
 
     # init css for links and labels
     $.rule(".link").append "stroke-width:" + Session.get("linkSize") + "px;"
@@ -340,6 +338,7 @@ Template.force.rendered = ->
         .size([width, height])
         .nodes(nodes)
         .links(links)
+        .on("tick", tick)
 
     # update the global scope
     window.force = force
@@ -379,9 +378,9 @@ Template.force.rendered = ->
     # update the labels
     updateLabels()
 
+    console.log "done rendering"
     if startForce
-        force.on("tick", tick)
-            .start()
+        force.start()
 
     Nodes.find().observe
         added: (node) ->

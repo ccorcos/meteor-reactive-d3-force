@@ -1,3 +1,7 @@
 <template name="home">
-    {{>force}}
+    {{#if sessionVar 'ready'}}
+        {{>force}}
+    {{else}}
+        <p>Donwloading data</p>
+    {{/if}}
 </template>
